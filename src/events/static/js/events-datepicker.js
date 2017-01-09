@@ -31,4 +31,13 @@ $(document).ready(function () {
     $( "#datepicker" ).focus();
   });
 
+  //check date
+  $('#id_date').change(function() {
+    console.log("Date changed");
+  });
+  // $(document).on("change", "#datepicker", function () {
+  //   $.post( "ajax/test.html", function( date, block ) {
+  //     $( ".result" ).html( date, block );
+  //   });
+  // })
 });
