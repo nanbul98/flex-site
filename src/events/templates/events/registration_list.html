@@ -3,6 +3,7 @@
 {% load crispy_forms_tags %}
 
 {% block style %}
+  <link rel="stylesheet" href="{% static 'css/events.css' %}">
 {% endblock style %}
 
 
@@ -20,15 +21,13 @@
          id="table">
     <thead>
     <tr>
-      <th data-field="delete">Unregister</th>
+      <th data-field="delete"></th>
       <th data-field="id" data-visible="false">ID</th>
       <th data-field="date" data-sortable="true">Date</th>
       <th data-field="block" data-sortable="true">Block</th>
       <th data-field="event" data-sortable="true">Event</th>
-      <th data-field="location" data-sortable="true">Location</th>
-      <th data-field="absent" data-sortable="true">Absent</th>
-      <th data-field="late" data-sortable="true">Late</th>
-      <th data-field="excused" data-sortable="true">Excused</th>
+      <th class="hidden-xs" data-field="absent" data-sortable="true">Absent</th>
+      <th class="hidden-xs" data-field="late" data-sortable="true">Late</th>
     </tr>
     </thead>
     <tbody>
@@ -48,16 +47,21 @@
         <td>{{ obj.id }}</td>
         <td>{{ obj.event.date|date:"Y-m-d"}}</td>
         <td>{{ obj.block }}</td>
-        <td>{{ obj.event.title }}</td>
-        <td>{{ obj.event.location }}</td>
-        <td>{{ obj.absent }} </td>
-        <td>{{ obj.late }}</td>
-        <td>{{ obj.excused }}</td>
+        <td><a href="#" data-toggle="modal" data-target="#event-info-modal-{{ obj.event.id }}">{{ obj.event.title }}</a></td>
+{#        <td>{{ obj.event.location }}</td>#}
+        <td class="hidden-xs">{{ obj.absent }} </td>
+        <td class="hidden-xs">{{ obj.late }}</td>
 
       </tr>
     {% endfor %}
     </tbody>
   </table>
+
+  {# Put this in seperate for loop so the modals' HTML is in a top level location #}
+  {#  http://getbootstrap.com/javascript/#modals #}
+  {% for obj in object_list %}
+      {% include 'events/event_info_modal.html' with event=obj.event %}
+  {% endfor %}
 
 
 {% endblock content %}

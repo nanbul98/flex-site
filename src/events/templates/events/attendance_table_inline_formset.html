@@ -10,6 +10,20 @@
         {% csrf_token %}
     {% endif %}
 
+    <div class="hidden-print">
+    {% if inputs and formset.forms %}
+        <br>
+        <div class="form-actions">
+            {% for input in inputs %}
+                {% include "bootstrap/layout/baseinput.html" %}
+            {% endfor %}
+            <a href="#" class="btn btn-default print" role="button"><i class="fa fa-print"></i></a>
+        </div>
+
+      <br>
+    {% endif %}
+    </div>
+
     <div>
         {{ formset.management_form|crispy }}
     </div>
@@ -67,12 +81,17 @@
         </tbody>
     </table>
 
+    <div class="hidden-print">
     {% if inputs and formset.forms %}
         <div class="form-actions">
             {% for input in inputs %}
                 {% include "bootstrap/layout/baseinput.html" %}
             {% endfor %}
+            <a href="#" class="btn btn-default print" role="button"><i class="fa fa-print"></i></a>
         </div>
     {% endif %}
+    </div>
+    <br>
+
 {% if formset_tag %}</form>{% endif %}
 {% endspecialspaceless %}

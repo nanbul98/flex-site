@@ -1,0 +1,48 @@
+<div class="clearfix">
+  {% if event.image %}
+    <img src="{{ event.get_image_url }}"
+         class="img-rounded img-responsive-50 pull-right hidden-sm"
+         style="margin: 0 0 8px 8px;"
+    >
+  {% endif %}
+  {{ event.description|safe }}
+
+  {% if event.image %}
+    <img src="{{ event.get_image_url }}"
+            class="img-rounded img-responsive hidden-xs hidden-md hidden-lg">
+  {% endif %}
+  {% if event.video %}
+    <!-- 16:9 aspect ratio -->
+    <div class="embed-responsive embed-responsive-16by9 img-rounded hidden-print" style="margin: 0 0 8px 0;">
+      <iframe class="embed-responsive-item" src="{{ event.video }}" allowfullscreen></iframe>
+    </div>
+    <div class="visible-print-block">
+      <p>Video link: {{ event.video }}</p>
+    </div>
+  {% elif event.description_link and not event.image %}
+    <p><a href="{{ event.description_link }}" target="_blank" ><i class="fa fa-link">&nbsp;&nbsp;</i>Link</a>
+    <span class="visible-print-inline">: {{ event.description_link }}</span>
+    </p>
+  {% endif %}
+</div>
+{% if not no_buttons %}
+  {% if request.user.is_superuser or request.user in event.get_editors %}
+    <div class="btn-group pull-right hidden-print" role="group">
+      <a title="Here you can Edit, Delete, or Duplicate to Future Weeks."
+         class="btn btn-default wait" href="{% url 'events:update' event.id %}">
+        <i class="fa fa-edit"></i> Edit
+      </a>
+      <a title="Create a single copy of this event where you can edit the copy before saving it.  To duplicate an event multiple times for future weeks, use the Edit button and set the 'Duplicate to future weeks' field at the bottom of the form."
+          class="btn btn-default wait" href="{% url 'events:copy' event.id %}">
+        <i class="fa fa-copy"></i> Copy
+      </a>
+      <a title="Numbers indicate how many students have registered for this event in each block it is available."
+         class="btn btn-primary wait" href="{% url 'events:attendance' event.id %}">
+        <i class="fa fa-users"></i> Attendance
+        {% for num in event.get_attendances %}
+          <span class="badge">{{ num }}</span>
+        {% endfor %}
+      </a>
+    </div>
+  {% endif %}
+{% endif %}

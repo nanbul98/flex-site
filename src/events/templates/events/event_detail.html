@@ -9,7 +9,7 @@
 
 
 {% block content %}
-    <h1>{{ event.title }}</h1>
+    <h1>{{ event.title }} <small>{{ event.date }}</small></h1>
 
 {% include 'events/event_single_table.html' %}
 

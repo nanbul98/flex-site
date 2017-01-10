@@ -28,6 +28,7 @@
                         name="date"
                         readonly="readonly"
                         class="form-control"
+                        value="{{ date_filter }}"
           >
         </div><br>
         <input class="btn btn-primary" type="submit" value="Generate"/>
@@ -57,6 +58,7 @@
         selectOtherMonths: true,
         beforeShowDay: WednesdaysOnly,
       });
+
     });
   </script>
 

@@ -5,12 +5,12 @@ from .models import Profile
 
 
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ["user", "get_first_name", "get_last_name", "homeroom_teacher", ]
-    list_filter = ["homeroom_teacher", ]
+    list_display = ["user", "get_first_name", "get_last_name", "homeroom_teacher", "grade", "phone", "email", ]
+    list_filter = ["homeroom_teacher", "grade"]
     # list_editable = ["title", ]
     # list_display_links = ["created_timestamp", ]
 
-    search_fields = ["user__username", "user__first_name", "user__last_name",]
+    search_fields = ["user__username", "user__first_name", "user__last_name", ]
 
     class Meta:
         model = Profile

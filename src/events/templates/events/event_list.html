@@ -15,12 +15,12 @@
   <div class="row">
     <div class="col-md-5">
       <h1>Flex Events <small class="responsive-wrap">{{ date_object }}</small></h1>
-      {%  include 'events/date_filter.html' %}
+      <div class="hidden-print">{%  include 'events/date_filter.html' %}</div>
     </div>
     <div class="col-md-7">
       {% if user.is_authenticated %}
         {% if user.is_staff %}
-        <h1><div class="pull-right">
+        <h1><div class="pull-right hidden-print">
           <a class="btn btn-success" href="{% url 'events:create' %}">
             <i class="fa fa-plus-circle"></i> Create New Event
           </a>
@@ -31,43 +31,35 @@
           <ul class="list-group" id="register-prompt">
             {% for key,value in registrations.items %}
             <li class="list-group-item">
-              <h4>{{ key }} <small>({{key.start_time}} - {{ key.end_time }})</small>
-                {% if value %}
-                  <a href="#" data-toggle="modal" data-target="#event-info-modal-{{ value.event.id }}">{{ value.event }}</a>
-                  ({{ value.event.location }})&nbsp;&nbsp;
-                  {% if not value.past_cut_off %}
-                    <a class="text-danger wait-on-click" href="{% url 'events:registrations_delete' value.id %}">
-                      <i class="fa fa-trash"></i>
-                    </a>
+              <div class="row">
+                <div class="col-sm-4">
+                  <h4>{{ key }}
+                    <small class="responsive-wrap">
+                      ({{key.start_time|time:"g:i a"}} - {{ key.end_time|time:"g:i a" }})
+                    </small>
+                  </h4>
+                </div>
+                <div class="col-sm-8">
+                  <h4>
+                  {% if value %}
+                      <a href="#" data-toggle="modal" data-target="#event-info-modal-{{ value.event.id }}">{{ value.event }}</a>
+                      ({{ value.event.location }})&nbsp;&nbsp;
+                      {% if not value.past_cut_off %}
+                        <a class="text-danger wait-on-click"
+                           title="Remove this event."
+                           href="{% url 'events:registrations_delete' value.id %}">
+                          <i class="fa fa-trash"></i>
+                        </a>
+                      {% endif %}
+                  {% else %}
+                    None. <a href="#" data-toggle="modal" data-target="#help-modal" title="Click for help.">
+                            <i class="fa fa-question-circle"></i>
+                          </a>
                   {% endif %}
-              </h4>
-                  <!-- Modal -->
-                  <div class="modal fade" id="event-info-modal-{{ value.event.id }}" role="dialog" tabindex="-1">
-                    <div class="modal-dialog">
-
-                      <!-- Modal content-->
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                            aria-hidden="true">&times;</span></button>
-                          <h4 class="modal-title">{{ value.event.title }}</h4>
-                        </div>
-                        <div class="modal-body">
-                          <b>Teachers:</b> {{ value.event.facilitator_string|safe }}<br>
-                          <b>Location:</b> {{ value.event.location }} ({{ value.event.location.name }})<br>
-                          <b>Description:</b> {{ value.event.description|safe }}
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        </div>
-                      </div><!-- /.modal-content -->
-                    </div><!-- /.modal-dialog -->
-                  </div><!-- /.modal -->
-
-                {% else %}
-                  None</h4>
-                {% endif %}
-
+                  </h4>
+                </div>
+              </div> <!-- row -->
+              {% include 'events/event_info_modal.html' with event=value.event %}
             </li>
             {% endfor %}
           </ul>
@@ -102,9 +94,9 @@
              data-blocks="{{ blocks_json }}"
              data-mobile-responsive="true"
              data-check-on-init="true"
-             data-min-width="768"
+             data-min-width="753"
              data-sort-name="blocks"
-             data-sort-order="desc"
+             data-sort-order="{% if active_block.id == 2 %}asc{% else %}desc{% endif %}"
              id="table">
           <thead>
           <tr>
@@ -154,6 +146,31 @@
     </div><!-- /.modal-dialog -->
   </div><!-- /.modal -->
   {% endif %}
+
+
+
+  <!-- Help Modal -->
+  <div class="modal fade" id="help-modal" tabindex="-1" role="dialog" aria-labelledby="help-modal-label">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="help-modal-label"><i class="fa fa-question-circle"></i> Registration Help</h4>
+        </div>
+        <div class="modal-body">
+          <p>To register for an event:</p>
+          <ol>
+            <li>Select the block you want to register for by clicking on one of the tabs at the top of the events list.
+            These tabs trigger what events are displayed and what events are available to you during that block.</li>
+            <li>Click the event you want to register for and follow the instructions.</li>
+          </ol>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
 {% endblock content %}
 

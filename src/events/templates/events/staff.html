@@ -12,7 +12,7 @@
 
 {% block content %}
 
-  <h1>Teacher Locations</h1>
+  <h1>Staff Locations</h1>
 
   {%  include 'events/date_filter.html' %}
 
@@ -36,12 +36,12 @@
         <td>{{ obj.first_name }}</td>
         <td>{{ obj.last_name }}</td>
         <td>{% for event in obj.FLEX1 %}
-          {{ event.title }} ({{ event.location }}){% if not forloop.last %}; {% endif %}
+          <a href="{% url 'events:detail' event.id %}">{{ event.title }}</a> ({{ event.location }}){% if not forloop.last %}; {% endif %}
             {% empty %}-
             {% endfor %}
         </td>
         <td>{% for event in obj.FLEX2 %}
-          {{ event.title }} ({{ event.location }}){% if not forloop.last %}; {% endif %}
+          <a href="{% url 'events:detail' event.id %}">{{ event.title }}</a> ({{ event.location }}){% if not forloop.last %}; {% endif %}
             {% empty %}-
             {% endfor %}
         </td>

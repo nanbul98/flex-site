@@ -42,12 +42,18 @@ class BlockAdmin(admin.ModelAdmin):
         model = Block
 
 
+def resave(EventAdmin, request, queryset):
+    for event in queryset:
+        event.save()
+
+
 class EventAdmin(admin.ModelAdmin):
 
     list_display = ["title", "creator", "date", "location", ]
     list_filter = ["date", "blocks", ]
     # list_editable = ["title", ]
     # list_display_links = ["created_timestamp", ]
+    actions = [resave]
 
     search_fields = ["title", "description"]
 

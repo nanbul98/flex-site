@@ -28,13 +28,13 @@ F1_AND_F2 = 2;
 FLEX1 = "FLEX1"
 FLEX2 = "FLEX2"
 XOR_HTML = "<p>You can only register for one of this event's blocks.</p>" +
-    "<p>Which block do you want to add to your registration form?</p>";
+    "<p>Which block do you want to register for?</p>";
 OR_HTML = "<p>You can register for both blocks or just one block for this event. If you want to register for both, " +
     "you can select it a second time.</p>" +
-    "<p>Which block do you want to add to your registration form?</p>"
+    "<p>Which block do you want to register for?</p>"
 AND_HTML = "<p>This event requires you to attend both Flex 1 and Flex 2.</p>" +
     "<p>Would you like to add this event to your registration form?</p>"
-ONE_HTML = "<p>Add this event to your registration form?</p>"
+ONE_HTML = "<p>Registration for this event?</p>"
 BTN_TEXT_F1 = "Add for Flex 1"
 BTN_TEXT_F2 = "Add for Flex 2"
 BTN_TEXT_BOTH = "Add for both Flex 1 and Flex 2";
@@ -123,14 +123,15 @@ $( document ).ready(function() {
 });
 
 //if IE11
-$( document ).ready(function() {
-    var ua = window.navigator.userAgent;
-    var msie = ua.indexOf("MSIE ");
-
-    if (msie > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./))  // If Internet Explorer, return version number
-    {
-        $(".img-responsive-50").addClass("img-responsive-50-ie11-hack");
-    }
-
-    return false;
-});
+// $( document ).ready(function() {
+//     var ua = window.navigator.userAgent;
+//     var msie = ua.indexOf("MSIE ");
+//
+//     if (msie > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./))  // If Internet Explorer, return version number
+//     {
+//         $(".img-responsive-50").addClass("img-responsive-50-ie11-hack").removeClass("img-responsive-50");
+//         $(".img-responsive").addClass("img-responsive-ie11-hack").removeClass("img-responsive");;
+//     }
+//
+//     return false;
+// });

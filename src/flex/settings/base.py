@@ -47,6 +47,7 @@ INSTALLED_APPS = (
     'django_select2',  # http://django-select2.readthedocs.io/en/latest/get_started.html
     'tinymce',  # https://github.com/aljosa/django-tinymce
     'embed_video',  # https://github.com/jazzband/django-embed-video
+    'imagekit', #https://github.com/matthewwithanm/django-imagekit
 
     # 'django_summernote',
 

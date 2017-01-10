@@ -58,6 +58,10 @@ def event_create(request):
 
         messages.success(request, msg)
 
+        if not event.cache_remote_image():
+            messages.warning(request, "Failed to properly cache your image.  Don't worry about it for now... unless "
+                                      "you didn't provide an image link, in which case please let Tylere know!")
+
         block_id = event.blocks.all()[0].id
         date_query = event.date
         return redirect("%s?date=%s" % (reverse('events:list_by_block', args=(block_id,)), date_query))
@@ -90,6 +94,11 @@ def event_update(request, id=None):
             msg += "; duplicates made for %s." % ', '.join(map(str, dupe_dates))
 
         messages.success(request, msg)
+
+        if not event.cache_remote_image():
+            messages.warning(request, "Failed to properly cache your image.  Don't worry about it for now... unless "
+                                      "you didn't provide an image link, in which case please let Tylere know!")
+
 
         block_id = event.blocks.all()[0].id
         date_query = event.date
@@ -206,10 +215,12 @@ def event_attendance(request, id=None, block_id=None):
     else:
         active_block = event.blocks.all()[0]
 
-    queryset1 = Registration.objects.filter(event=event, block=active_block)
+    queryset1 = Registration.objects.filter(event=event, block=active_block).order_by('student__last_name')
 
     # https://docs.djangoproject.com/en/1.9/topics/forms/modelforms/#model-formsets
-    AttendanceFormSet1 = modelformset_factory(Registration, form=AttendanceForm, extra=0)
+    AttendanceFormSet1 = modelformset_factory(Registration,
+                                              form=AttendanceForm,
+                                              extra=0)
     helper = AttendanceFormSetHelper()
 
     if request.method =="POST":
@@ -311,16 +322,17 @@ def staff_locations(request):
 
 @staff_member_required
 def generate_synervoice_csv(request, d):
-    def blocks_absent(s):
-        str = ""
-        if 'FLEX1' in s:
-            str += s['FLEX1']
-        if 'FLEX2' in s:
-            str += s['FLEX2']
-        return str
+    # def blocks_absent(s):
+    #     str = ""
+    #     if 'FLEX1' in s:
+    #         str += s['FLEX1']
+    #     if 'FLEX2' in s:
+    #         str += s['FLEX2']
+    #     return str
 
     d_str = d.strftime("%y%m%d")
     attendance_data = Registration.objects.all_attendance(d)
+    # A 8th column exists if the student was absent or didn't register
     absent_data = [s for s in attendance_data if len(s) > 7]
 
     # https://docs.djangoproject.com/en/1.10/howto/outputting-csv/
@@ -332,22 +344,30 @@ def generate_synervoice_csv(request, d):
         writer.writerow([s['last_name'] + ", " + s['first_name'],
                          s['username'],
                          s['profile__grade'],
-                         s['profile__email'],
+                         s['profile__phone'],
                          d_str,
-                         blocks_absent(s),
-                       ])
+                         "F",  # blocks_absent(s),  # Add F regardless of whether absent or didn't register, one or both
+                        ])
 
     return response
 
 
 @staff_member_required
 def synervoice(request):
+    date_query = request.GET.get("date", str(default_event_date()))
+    d = datetime.strptime(date_query, "%Y-%m-%d").date()
+
     if request.method == "POST":
         event_date = request.POST.get("date")
         d = datetime.strptime(event_date, "%Y-%m-%d").date()
         return generate_synervoice_csv(request, d)
 
-    return render(request, "events/synervoice.html")
+    context = {
+        "date_filter": date_query,
+        "d": d,
+    }
+
+    return render(request, "events/synervoice.html", context)
 
 
 ###############################################
@@ -389,15 +409,6 @@ def register(request, id, block_id):
     return redirect("%s?date=%s" % (reverse('events:list_by_block', args=(block_id,)), date_query))
 
 
-@staff_member_required
-def registrations_all(request):
-    queryset = Registration.objects.all()
-    context = {
-        "object_list": queryset
-    }
-    return render(request, "events/registration_all.html", context)
-
-
 @login_required
 def registrations_delete(request, id=None):
     reg = get_object_or_404(Registration, id=id)
@@ -437,15 +448,31 @@ def registrations_homeroom(request, user_id=None):
         homeroom_teacher = get_object_or_404(User, id=user_id)
     else:
         homeroom_teacher = request.user
-    profile_queryset = Profile.objects.select_related('user').filter(homeroom_teacher=homeroom_teacher)
-    profile_queryset.annotate()
 
-    students = Registration.objects.homeroom_registration_check(d, homeroom_teacher)
+    # profile_queryset = Profile.objects.select_related('user').filter(homeroom_teacher=homeroom_teacher)
+    # # profile_queryset.annotate()  # runs the query? why?
+
+    students = Registration.objects.registration_check(d, homeroom_teacher)
 
     context = {
-        "object_list": profile_queryset,
+        "heading": "Homeroom Students for " + homeroom_teacher.get_full_name(),
         "students": students,
-        "teacher": homeroom_teacher,
+        "date_filter": date_query,
+        "date_object": d,
+    }
+    return render(request, "events/homeroom_list.html", context)
+
+
+@staff_member_required
+def registrations_all(request):
+    date_query = request.GET.get("date", str(default_event_date()))
+    d = datetime.strptime(date_query, "%Y-%m-%d").date()
+
+    students = Registration.objects.registration_check(d)
+
+    context = {
+        "heading": "All Student Registrations",
+        "students": students,
         "date_filter": date_query,
         "date_object": d,
     }

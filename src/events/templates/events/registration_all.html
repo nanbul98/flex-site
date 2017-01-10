@@ -3,6 +3,8 @@
 {% load crispy_forms_tags %}
 
 {% block style %}
+  <link rel="stylesheet" href="{% static 'css/events.css' %}">
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 {% endblock style %}
 
 
@@ -11,6 +13,8 @@
 {% block content %}
 
   <h1>All Registrations</h1>
+
+  {%  include 'events/date_filter.html' %}
 
   <table data-toggle="table"
          data-classes="table table-no-bordered"
@@ -37,7 +41,7 @@
         <td>{{ obj.event.date }}</td>
         <td>{{ obj.block }}</td>
         <td>{{ obj.student }} - {{ obj.student.get_full_name }}</td>
-        <td><a href="{% url 'events:registrations_delete' obj.id%}"><i class="fa fa-trash"></i></a> {{ obj.event.title }}</td>
+        <td><a href="{{ obj.event.get_absolute_url }}">{{ obj.event.title }}</a></td>
         <td>{{ obj.event.location }}</td>
         <td>{{ obj.absent }} </td>
         <td>{{ obj.late }}</td>
@@ -52,6 +56,11 @@
 {% endblock content %}
 
 {% block js %}
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
   <!-- Bootstrap Tables:  http://bootstrap-table.wenzhixin.net.cn/ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.0/bootstrap-table.min.js"></script>
+
+  {#  Date Filter#}
+  <script src="{% static 'js/events-datepicker.js' %}"></script>
+
 {% endblock js %}

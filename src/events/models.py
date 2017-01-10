@@ -1,17 +1,24 @@
 import mimetypes
+import urllib
 from datetime import date, timedelta
 
 import embed_video
+import os
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.files import File
+from django.core.files.temp import NamedTemporaryFile
 from django.db import models
 from django.core.urlresolvers import reverse
+from django.db.models.signals import post_save
 from django.utils import timezone
 
 from embed_video.backends import detect_backend, UnknownBackendException
 
 # Create your models here.
+from imagekit.models import ProcessedImageField
+from pilkit.processors import ResizeToFill, SmartResize, ResizeToFit
 
 
 class Category(models.Model):
@@ -36,6 +43,12 @@ class Location(models.Model):
         # if self.name:
         #     str += " (" + self.name + ")"
         # return str
+
+    def get_name(self):
+        if self.name:
+            return self.name
+        else:
+            return ""
 
     class Meta:
         ordering = ['room_number']
@@ -64,6 +77,9 @@ class Block(models.Model):
             return "FLEX1"
         else:
             return "FLEX2"
+
+    def synervoice_string(self):
+        return "F"
 
 
 def default_event_date():
@@ -101,8 +117,9 @@ class Event(models.Model):
     description_link = models.URLField(
         null=True, blank=True,
         help_text="An optional link to provide with the text description. If the link is to a video (YouTube or Vimeo) "
-                  "or an image (png, jpg, etc.) it will be embedded with the description if there is enough "
-                  "screen space.")
+                  "or an image (png, jpg, or gif) it will be embedded with the description if there is enough "
+                  "screen space.  If it is to another web page or a file, it will just display the link.")
+
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     date = models.DateField(default=default_event_date)
     location = models.ForeignKey(Location, on_delete=models.SET_NULL, null=True, blank=True)
@@ -131,6 +148,10 @@ class Event(models.Model):
                   "students will no longer be able to register for this event.")
 
     # generally non-editable fields
+    description_image_file = ProcessedImageField(upload_to='images/', null=True, blank=True,
+                                                        processors=[ResizeToFit(400, 400, upscale=False)],
+                                                        format='JPEG',
+                                                        options={'quality': 80})
     creator = models.ForeignKey(User)
     updated_timestamp = models.DateTimeField(auto_now=True, auto_now_add=False)
     created_timestamp = models.DateTimeField(auto_now=False, auto_now_add=True)
@@ -148,6 +169,35 @@ class Event(models.Model):
 
     def get_absolute_url(self):
         return reverse("events:detail", kwargs={"id": self.id})
+
+    def cache_remote_image(self):
+        """
+        Take an image from the description field, download it to a temp file, and save it to the database in
+        description_image_file.
+        """
+        if self.image():  # and not self.image_file:
+            img_url = self.description_link
+            img_temp = NamedTemporaryFile(delete=True)
+            # http://stackoverflow.com/questions/24226781/changing-user-agent-in-python-3-for-urrlib-request-urlopen
+            try:
+                request = urllib.request.Request(
+                    img_url,
+                    data=None,
+                    headers={
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'
+                    }
+                )
+                img_temp.write(urllib.request.urlopen(request).read())
+            except urllib.error.HTTPError:
+                return False
+            img_temp.flush()
+            self.description_image_file.save(os.path.basename(img_url), File(img_temp))
+            self.save()
+            return True
+        else:
+            self.description_image_file = None
+            self.save()
+            return True
 
     def copy(self, num, copy_date=None, user=None, dates=[]):
         """
@@ -175,6 +225,7 @@ class Event(models.Model):
             dates = duplicate_event.copy(num - 1, dates=dates)  # recursive
         return dates
 
+
     def get_video_embed_link(self, backend):
         if type(backend) is embed_video.backends.YoutubeBackend:
             return "https://www.youtube.com/embed/" + backend.get_code() + "?rel=0"
@@ -183,11 +234,18 @@ class Event(models.Model):
         else:
             return None
 
+    def get_image_url(self): #assumes its an image already.
+        if self.description_image_file:
+            return self.description_image_file.url
+        else:
+            return self.description_link
+
     def video(self):
         if not self.description_link:
             return None
         try:
             backend = detect_backend(self.description_link)
+
             return self.get_video_embed_link(backend)
         except UnknownBackendException:
             return None
@@ -259,7 +317,7 @@ class Event(models.Model):
         for fac in facilitators:
             if count > 1:
                 fac_str += ", "
-            fac_str += fac.first_name + "&nbsp;" + fac.last_name
+            fac_str += fac.first_name + " " + fac.last_name
             count += 1
         return fac_str
 
@@ -334,6 +392,13 @@ class Event(models.Model):
         return result
 
 
+def event_post_save(sender, instance, **kwargs):
+    post_save.disconnect(event_post_save, sender=sender)  # prevent recursion
+    instance.cache_remote_image()
+    post_save.connect(event_post_save, sender=sender)
+post_save.connect(event_post_save, sender=Event)
+
+
 class RegistrationManager(models.Manager):
     def create_registration(self, event, student, block):
         # need to check if student already has an event on that date in this block, if so, modify.
@@ -348,21 +413,24 @@ class RegistrationManager(models.Manager):
         qs = self.get_queryset()
         return qs.filter(student=student).filter(event__date=event_date).filter(block=block)
 
-    def homeroom_registration_check(self, event_date, homeroom_teacher):
-        students = User.objects.all().filter(
-            is_staff=False,
-            profile__homeroom_teacher=homeroom_teacher
-        )
-        students = students.values('id', 'username', 'first_name', 'last_name')
-        students = list(students)
+    def registration_check(self, event_date, homeroom_teacher=None):
+        if homeroom_teacher:
+            students = User.objects.all().filter(
+                is_staff=False,
+                profile__homeroom_teacher=homeroom_teacher
+            )
+            # get queryset with events? optimization for less hits on db
+            qs = self.get_queryset().filter(
+                event__date=event_date,
+                student__profile__homeroom_teacher=homeroom_teacher
+            )
+        else:
+            students = User.objects.all().filter(is_staff=False)
+            # get queryset with events? optimization for less hits on db
+            qs = self.get_queryset().filter(event__date=event_date)
 
-        block_ids = Block.objects.values('id')
+        students = students.values('id', 'username', 'first_name', 'last_name', 'profile__grade')
 
-        # get queryset with events? optimization for less hits on db
-        qs = self.get_queryset().filter(
-            event__date=event_date,
-            student__profile__homeroom_teacher=homeroom_teacher
-        )
         for student in students:
             user_regs_qs = qs.filter(student_id=student['id'])
 
@@ -401,9 +469,9 @@ class RegistrationManager(models.Manager):
                 try:
                     reg = user_regs_qs.get(block=block)
                     if reg.absent and not reg.excused:
-                        student[block.constant_string()] = block.constant_string()
+                        student[block.constant_string()] = block.synervoice_string()
                 except ObjectDoesNotExist:
-                    student[block.constant_string()] = block.constant_string() + "-NOREG"
+                    student[block.constant_string()] = block.synervoice_string()
 
         return students
 
@@ -459,10 +527,17 @@ class Registration(models.Model):
             elif self.event == event and self.event.multi_block_event == Event.F1_XOR_F2:
                 result = "You are already registered for this event in another block.  " \
                          "This event only allows registration in one block."
-            elif self.block == block or self.event.both_required() or event.both_required():
+            elif self.event.both_required() or event.both_required():
                 result = "This event conflicts with another event you are already registered for. " \
                     "You will need to remove the conflicting event before you can register for this one."
                 # this event occurs in the same block (or multi block AND)
+            elif self.block == block:
+                if self.event.multi_block_event == Event.F1_OR_F2 or self.event.multi_block_event == Event.F1_XOR_F2:
+                    result = "You are already registered for a different event in %s.  " \
+                             "If you want to register for this event in another block, select the other block's tab " \
+                             "at the top of this list." % str(block)
+                else:
+                    result = "You are already registered for a different event in %s." % str(block)
 
         # did I miss anything?
         return result
